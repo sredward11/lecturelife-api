@@ -1,0 +1,185 @@
+openapi: 3.1.1
+info:
+  title: Minha API
+  description: Projeto de uma API REST usando ExpressJs e Mongoose
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000/
+    description: Ambiente de Desenvolvimento
+tags:
+  - tarefas
+paths:
+  /tarefas:
+    get:
+      tags:
+        - tarefas
+      responses:
+        200:
+          description: Operação com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tarefa'
+        500:
+          description: Erro Inesperado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+    post:
+      tags:
+        - tarefas
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nome:
+                 type: string
+                 example: Estudar Swagger
+
+      responses:
+        201:
+          description: Tarefa criada com sucesso
+          content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Erro'
+        422:
+          description: Erro de validação
+          content:
+              application/json:
+                schema:
+                type: object
+        500:
+          description: Erro inesperado
+          content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Erro'
+  /tarefas/id:
+    get:
+      summary: Tarefa encontrada
+      tags:
+        - tarefas
+      parameters:
+        - in: path
+          name: tarefaId
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: Tarefa encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        400:
+          description: ID inválido
+          content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Erro'
+        404:
+          description: Tarefa não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+                
+        500:
+        description: Erro inesperado
+        content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+    put:
+      tags:
+        - tarefas
+      parameters:
+        - in: path
+          name: tarefaId
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tarefa'
+        400:
+          content:
+            application/json:
+              schema:
+                type: object
+        404:
+          content:
+            application/json:
+              schema:
+                type: object
+        422:
+          content:
+            application/json:
+              schema:
+                type: object
+        500:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+    delete:
+      tags:
+        - tarefas
+      parameters:
+        - in: path
+          name: tarefaId
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          content:
+            application/json:
+              schema:
+                type: object
+        404:
+          content:
+            application/json:
+              schema:
+                type: object
+        500:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+components:
+  schemas:
+    Tarefa:
+      type: object
+      properties:
+        id:
+          type: string
+        nome:
+          type: string
+        concluida:
+          type: boolean
+    Erro:
+      type: object
+      properties:
+        msg:
+          type: string
