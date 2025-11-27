@@ -26,7 +26,7 @@ function sanitizeUser(user) {
   const { senhaHash, __v, ...rest } = user.toObject({ versionKey: false });
   rest.id = rest._id;
   delete rest._id;
-  return rest;
+   return rest;
 }
 
 async function registerUser({ nome, email, senha, role }) {
@@ -51,8 +51,8 @@ async function registerUser({ nome, email, senha, role }) {
 async function authenticateUser({ email, senha }) {
   const user = await User.findOne({ email });
   if (!user) {
-    const error = new Error('Credenciais inválidas');
-    error.statusCode = 401;
+    const error = new Error('Usuário não encontrado');
+    error.statusCode = 404;
     throw error;
   }
 
@@ -64,7 +64,8 @@ async function authenticateUser({ email, senha }) {
   }
 
   const payload = {
-    sub: user.id,
+    id: user.id,
+    email: user.email,
     role: user.role,
     nome: user.nome,
   };

@@ -12,7 +12,10 @@
     }
   ],
   "tags": [
-    { "name": "Auth", "description": "Autenticação de usuários" },
+    {
+      "name": "Auth",
+      "description": "Autenticação de usuários. No botão Authorize informe apenas o token JWT (sem prefixo 'Bearer '); o Swagger exibirá 'Authorized' mesmo com tokens inválidos e o backend retornará 401 se o token for rejeitado."
+    },
     { "name": "Books", "description": "Gestão de livros" },
     { "name": "Readings", "description": "Gestão de leituras" }
   ],
@@ -21,7 +24,8 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "JWT"
+        "bearerFormat": "JWT",
+        "description": "Informe apenas o token JWT (sem prefixo 'Bearer '). O indicador 'Authorized' do Swagger não valida o token; a checagem real acontece no backend e retornará 401 em caso de token inválido."
       }
     },
     "schemas": {
@@ -46,17 +50,13 @@
         "properties": {
           "id": { "type": "string" },
           "titulo": { "type": "string" },
-          "autor": { "type": "string" },
-          "anoPublicacao": { "type": "integer" },
-          "categoria": { "type": "string" },
-          "paginasTotal": { "type": "integer" },
-          "sinopse": { "type": "string" }
+          "autor": { "type": "string" }
         },
         "required": ["id", "titulo"]
       },
       "BookCreate": {
         "type": "object",
-        "properties": {
+          "properties": {
           "titulo": { "type": "string", "example": "Clean Code" },
           "autor": { "type": "string", "example": "Robert C. Martin" },
           "anoPublicacao": { "type": "integer", "example": 2008 },
@@ -81,6 +81,10 @@
         "type": "object",
         "properties": {
           "id": { "type": "string" },
+          "readingId": {
+            "type": "string",
+            "description": "Identificador único da leitura (mesmo valor do campo id)"
+          },
           "userId": { "type": "string" },
           "bookId": { "type": "string" },
           "status": {
@@ -94,7 +98,7 @@
           "favorito": { "type": "boolean" },
           "book": { "$ref": "#/components/schemas/Book" }
         },
-        "required": ["id", "bookId", "status"]
+        "required": ["id", "readingId", "bookId", "status"]
       },
       "ReadingCreate": {
         "type": "object",
@@ -126,7 +130,8 @@
           "nota": { "type": "number", "minimum": 0, "maximum": 10 },
           "paginasLidas": { "type": "integer" },
           "favorito": { "type": "boolean" }
-        }
+        },
+        "additionalProperties": false
       }
     }
   },
@@ -161,6 +166,7 @@
       "post": {
         "tags": ["Auth"],
         "summary": "Login do usuário",
+        "description": "Realiza login e retorna um token JWT. No botão Authorize do Swagger informe apenas o token (sem 'Bearer '). O status 'Authorized' não garante validade do token; se estiver inválido, as rotas protegidas responderão 401.",
         "requestBody": {
           "required": true,
           "content": {
@@ -186,6 +192,7 @@
       "get": {
         "tags": ["Books"],
         "summary": "Listar livros",
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "titulo",
@@ -204,7 +211,8 @@
           "200": {
             "description": "Lista de livros",
             "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Book" } } } }
-          }
+          },
+          "404": { "description": "Nenhum livro encontrado para os filtros informados" }
         }
       },
       "post": {
@@ -232,6 +240,7 @@
       "get": {
         "tags": ["Books"],
         "summary": "Buscar livro por ID ou título",
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "idOrTitle",
@@ -266,12 +275,20 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/BookUpdate" }
+              "schema": { "$ref": "#/components/schemas/BookUpdate" },
+              "example": {
+                "titulo": "Novo título",
+                "autor": "Novo autor",
+                "anoPublicacao": 2024,
+                "categoria": "Romance",
+                "paginasTotal": 300,
+                "sinopse": "Texto opcional"
+              }
             }
           }
         },
         "responses": {
-          "200": { "description": "Livro atualizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Book" } } } },
+          "200": { "description": "Livro atualizado com sucesso", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Book" } } } },
           "404": { "description": "Livro não encontrado" },
           "422": { "description": "Dados inválidos" }
         }
@@ -321,7 +338,8 @@
           "200": {
             "description": "Lista de leituras",
             "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Reading" } } } }
-          }
+          },
+          "404": { "description": "Nenhuma leitura encontrada para os filtros informados" }
         }
       },
       "post": {
@@ -357,7 +375,13 @@
         "summary": "Detalhar leitura",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID da leitura (não do livro)",
+            "schema": { "type": "string" }
+          }
         ],
         "responses": {
           "200": { "description": "Leitura encontrada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Reading" } } } },
@@ -369,7 +393,13 @@
         "summary": "Atualizar leitura",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID da leitura (não do livro)",
+            "schema": { "type": "string" }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -400,7 +430,13 @@
         "summary": "Remover leitura",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID da leitura (não do livro)",
+            "schema": { "type": "string" }
+          }
         ],
         "responses": {
           "204": { "description": "Leitura removida" },
@@ -435,3 +471,4 @@
     }
   }
 }
+

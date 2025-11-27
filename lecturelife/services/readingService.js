@@ -16,6 +16,7 @@ function formatBook(book) {
 function formatReading(reading) {
   const { __v, ...data } = reading.toObject({ versionKey: false });
   data.id = data._id;
+  data.readingId = data._id;
   delete data._id;
   if (data.bookId && typeof data.bookId === 'object') {
     data.book = formatBook(reading.bookId);
@@ -42,7 +43,6 @@ function ensureDatesAreValid(status, dataInicio, dataFim) {
   if (status === 'lendo' && !dataInicio) {
     return { dataInicio: new Date() };
   }
-
   if (status === 'concluido') {
     if (!dataFim) {
       const error = new Error('dataFim é obrigatória para leituras concluídas');
@@ -105,6 +105,7 @@ function ensurePaginasValidas(book, paginasLidas, status) {
   }
 }
 
+
 async function loadBook(bookId) {
   if (!bookId) {
     const error = new Error('bookId é obrigatório');
@@ -128,7 +129,7 @@ async function loadBook(bookId) {
 }
 
 function ensureStatusValido(status) {
-  if (!ALLOWED_STATUSES.includes(status)) {
+  if (!status || typeof status !== 'string' || !ALLOWED_STATUSES.includes(status)) {
     const error = new Error('Status de leitura inválido');
     error.statusCode = 422;
     throw error;
@@ -159,7 +160,10 @@ async function createReading(userId, payload) {
 
 async function listReadings(userId, filtros = {}) {
   const query = { userId };
-  if (filtros.status) {
+  const hasStatusFilter = filtros.status !== undefined;
+  const hasCategoriaFilter = filtros.categoria !== undefined;
+
+  if (hasStatusFilter) {
     ensureStatusValido(filtros.status);
     query.status = filtros.status;
   }
@@ -170,6 +174,12 @@ async function listReadings(userId, filtros = {}) {
   const filtered = filtros.categoria
     ? readings.filter((item) => item.bookId && item.bookId.categoria === filtros.categoria)
     : readings;
+
+  if ((hasStatusFilter || hasCategoriaFilter) && filtered.length === 0) {
+    const error = new Error('Nenhuma leitura encontrada para os filtros informados');
+    error.statusCode = 404;
+    throw error;
+  }
 
   return filtered.map(formatReading);
 }
@@ -197,24 +207,56 @@ async function updateReading(userId, id, payload) {
     throw error;
   }
 
-  const status = payload.status || reading.status;
-  ensureStatusValido(status);
-  await ensureNoDuplicateActive(userId, payload.bookId || reading.bookId, status, reading.id);
+  const allowedFields = ['bookId', 'status', 'dataInicio', 'dataFim', 'nota', 'paginasLidas', 'favorito'];
+  const extraFields = Object.keys(payload || {}).filter((field) => !allowedFields.includes(field));
 
-  const book = await loadBook(payload.bookId || reading.bookId);
-  ensureNotaPermitted(status, payload.nota !== undefined ? payload.nota : reading.nota);
+  if (extraFields.length) {
+    const error = new Error('Campos não permitidos no corpo da requisição');
+    error.statusCode = 422;
+    throw error;
+  }
+
+  const updateData = {};
+  allowedFields.forEach((field) => {
+    if (payload[field] !== undefined) {
+      updateData[field] = payload[field];
+    }
+  });
+
+  // 👇 mantém a correção do status vazio
+  const status = updateData.status !== undefined ? updateData.status : reading.status;
+
+  ensureStatusValido(status);
+  await ensureNoDuplicateActive(
+    userId,
+    updateData.bookId || reading.bookId,
+    status,
+    reading.id
+  );
+
+  // 🔁 ***MUDANÇA DE ORDEM***: datas antes de páginas
+  const dataInicio =
+    updateData.dataInicio !== undefined ? updateData.dataInicio : reading.dataInicio;
+  const dataFim =
+    updateData.dataFim !== undefined ? updateData.dataFim : reading.dataFim;
+
+  const dateAdjust = ensureDatesAreValid(status, dataInicio, dataFim);
+
+  const book = await loadBook(updateData.bookId || reading.bookId);
+
+  ensureNotaPermitted(
+    status,
+    updateData.nota !== undefined ? updateData.nota : reading.nota
+  );
+
   ensurePaginasValidas(
     book,
-    payload.paginasLidas !== undefined ? payload.paginasLidas : reading.paginasLidas,
+    updateData.paginasLidas !== undefined ? updateData.paginasLidas : reading.paginasLidas,
     status
   );
 
-  const dataInicio = payload.dataInicio !== undefined ? payload.dataInicio : reading.dataInicio;
-  const dataFim = payload.dataFim !== undefined ? payload.dataFim : reading.dataFim;
-  const dateAdjust = ensureDatesAreValid(status, dataInicio, dataFim);
-
   Object.assign(reading, {
-    ...payload,
+    ...updateData,
     status,
     ...dateAdjust,
   });
@@ -240,7 +282,6 @@ async function getStats(userId) {
       $group: {
         _id: '$status',
         total: { $sum: 1 },
-        paginas: { $sum: '$paginasLidas' },
         notas: { $push: '$nota' },
       },
     },

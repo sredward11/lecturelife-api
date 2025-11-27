@@ -8,6 +8,11 @@ describe('Readings - LectureLife', () => {
     return { token, user, book };
   }
 
+  test('GET /readings sem token deve retornar 401', async () => {
+    const resposta = await request(app).get('/readings').expect(401);
+    expect(resposta.body).toHaveProperty('message', 'Token não fornecido');
+  });
+
   test('POST /readings deve criar leitura para usuário autenticado', async () => {
     const { token, book } = await setupUserAndBook();
     const resposta = await request(app)
@@ -18,6 +23,7 @@ describe('Readings - LectureLife', () => {
 
     expect(resposta.body).toHaveProperty('status', 'lendo');
     expect(resposta.body).toHaveProperty('dataInicio');
+    expect(resposta.body).toHaveProperty('readingId', resposta.body.id);
   });
 
   test('POST /readings deve impedir duplicidade ativa', async () => {
@@ -42,12 +48,12 @@ describe('Readings - LectureLife', () => {
     const { token, book } = await setupUserAndBook({ book: { paginasTotal: 100 } });
 
     const resposta = await request(app)
-      .post('/readings')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ bookId: book.id, status: 'lendo', paginasLidas: 150 })
-      .expect(422);
+  .post('/readings')
+  .set('Authorization', `Bearer ${token}`)  
+  .send({ bookId: book.id, status: 'lendo', paginasLidas: 150 })
+  .expect(422);
 
-    expect(resposta.body).toHaveProperty('message');
+expect(resposta.body).toHaveProperty('message');
   });
 
   test('POST /readings não deve aceitar nota quando status diferente de concluido', async () => {
@@ -101,7 +107,7 @@ describe('Readings - LectureLife', () => {
       .expect(201);
 
     const resposta = await request(app)
-      .put(`/readings/${created.body.id}`)
+     .put(`/readings/${created.body.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ status: 'concluido', dataFim: '2024-01-01' })
       .expect(422);
@@ -124,6 +130,23 @@ describe('Readings - LectureLife', () => {
       .expect(200);
 
     expect(resposta.body).toHaveLength(1);
+  });
+
+  test('GET /readings deve retornar 404 quando filtros não encontrarem leituras', async () => {
+    const { token, book } = await setupUserAndBook({ book: { categoria: 'aventura' } });
+    await request(app)
+      .post('/readings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ bookId: book.id, status: 'planejando' })
+      .expect(201);
+
+    const resposta = await request(app)
+      .get('/readings')
+      .set('Authorization', `Bearer ${token}`)
+      .query({ status: 'concluido', categoria: 'romance' })
+      .expect(404);
+
+    expect(resposta.body).toHaveProperty('message', 'Nenhuma leitura encontrada para os filtros informados');
   });
 
   test('GET /readings/stats deve retornar resumo do usuário', async () => {
@@ -154,5 +177,31 @@ describe('Readings - LectureLife', () => {
 
     expect(resposta.body).toMatchObject({ concluidos: 1, totalLeituras: 1 });
     expect(resposta.body.mediaNotas).toBeGreaterThan(0);
+  });
+
+  test('PUT /readings deve recusar campos extras e status inválido', async () => {
+    const { token, book } = await setupUserAndBook();
+
+    const created = await request(app)
+      .post('/readings')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ bookId: book.id, status: 'planejando' })
+      .expect(201);
+
+    const respostaExtra = await request(app)
+      .put(`/readings/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'lendo', campoInvalido: true })
+      .expect(422);
+
+    expect(respostaExtra.body).toHaveProperty('message', 'Campos não permitidos no corpo da requisição');
+
+    const respostaStatus = await request(app)
+      .put(`/readings/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: '' })
+      .expect(422);
+
+    expect(respostaStatus.body).toHaveProperty('message', 'Status de leitura inválido');
   });
 });

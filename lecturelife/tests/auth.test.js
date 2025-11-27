@@ -22,7 +22,7 @@ describe('Auth - LectureLife', () => {
       email: 'fulano@example.com',
       role: 'user',
     });
-    expect(resposta.body).not.toHaveProperty('senhaHash');
+     expect(resposta.body).not.toHaveProperty('senhaHash');
   });
 
   test('POST /auth/register com email duplicado deve retornar 409', async () => {
@@ -47,10 +47,21 @@ describe('Auth - LectureLife', () => {
     expect(resposta.body).toHaveProperty('user.email', 'fulano@example.com');
   });
 
-  test('POST /auth/login com credenciais inválidas deve retornar 401', async () => {
+  test('POST /auth/login com email inexistente deve retornar 404', async () => {
     const resposta = await request(app)
       .post('/auth/login')
       .send({ email: 'naoexiste@example.com', senha: '123456' })
+      .expect(404);
+
+    expect(resposta.body).toHaveProperty('message', 'Usuário não encontrado');
+  });
+
+  test('POST /auth/login com senha errada deve retornar 401', async () => {
+    await request(app).post('/auth/register').send(buildUserPayload()).expect(201);
+
+    const resposta = await request(app)
+      .post('/auth/login')
+      .send({ email: 'fulano@example.com', senha: 'senha_errada' })
       .expect(401);
 
     expect(resposta.body).toHaveProperty('message', 'Credenciais inválidas');

@@ -5,10 +5,12 @@ const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
 
+router.use(autenticar);
+
 router.get('/', asyncHandler(booksController.list));
 router.get('/:idOrTitle', asyncHandler(booksController.show));
-router.post('/', autenticar, asyncHandler(booksController.create));
-router.put('/:idOrTitle', autenticar, asyncHandler(booksController.update));
-router.delete('/:idOrTitle', autenticar, asyncHandler(booksController.remove));
+router.post('/', asyncHandler(booksController.create));
+router.put('/:idOrTitle', asyncHandler(booksController.update));
+router.delete('/:idOrTitle', asyncHandler(booksController.remove));
 
 module.exports = router;

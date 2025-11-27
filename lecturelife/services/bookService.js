@@ -20,18 +20,30 @@ async function createBook(payload) {
 
 function buildFilter(filtros = {}) {
   const filter = {};
+  let hasFilters = false;
+
   if (filtros.titulo || filtros.title) {
     filter.titulo = filtros.titulo || filtros.title;
+    hasFilters = true;
   }
   if (filtros.categoria) {
     filter.categoria = filtros.categoria;
+    hasFilters = true;
   }
-  return filter;
+
+  return { filter, hasFilters };
 }
 
 async function listBooks(filtros = {}) {
-  const filter = buildFilter(filtros);
+  const { filter, hasFilters } = buildFilter(filtros);
   const books = await Book.find(filter).sort({ createdAt: -1 });
+
+  if (hasFilters && books.length === 0) {
+    const error = new Error('Nenhum livro encontrado para os filtros informados');
+    error.statusCode = 404;
+    throw error;
+  }
+
   return books.map(formatBook);
 }
 

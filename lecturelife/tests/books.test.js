@@ -11,7 +11,7 @@ describe('Books - LectureLife', () => {
     const { Authorization } = await authHeader();
     const resposta = await request(app)
       .post('/books')
-      .set('Authorization', Authorization)
+       .set('Authorization', Authorization)
       .send({ titulo: 'Clean Code', anoPublicacao: 2008 })
       .expect(201);
 
@@ -36,9 +36,29 @@ describe('Books - LectureLife', () => {
       .send({ titulo: 'Livro 1', anoPublicacao: 2010 })
       .expect(201);
 
-    const resposta = await request(app).get('/books').expect(200);
+    const resposta = await request(app)
+      .get('/books')
+      .set('Authorization', Authorization)
+      .expect(200);
     expect(Array.isArray(resposta.body)).toBe(true);
     expect(resposta.body[0]).toHaveProperty('titulo');
+  });
+
+  test('GET /books deve retornar 404 quando filtros não encontrarem registros', async () => {
+    const { Authorization } = await authHeader();
+    await request(app)
+      .post('/books')
+      .set('Authorization', Authorization)
+      .send({ titulo: 'Livro X', categoria: 'ficcao', anoPublicacao: 2018 })
+      .expect(201);
+
+    const resposta = await request(app)
+      .get('/books')
+      .set('Authorization', Authorization)
+      .query({ categoria: 'historia' })
+      .expect(404);
+
+    expect(resposta.body).toHaveProperty('message', 'Nenhum livro encontrado para os filtros informados');
   });
 
   test('GET /books/:id deve retornar livro específico', async () => {
@@ -49,7 +69,10 @@ describe('Books - LectureLife', () => {
       .send({ titulo: 'Livro Detalhe', anoPublicacao: 2012 })
       .expect(201);
 
-    const resposta = await request(app).get(`/books/${created.body.id}`).expect(200);
+    const resposta = await request(app)
+      .get(`/books/${created.body.id}`)
+      .set('Authorization', Authorization)
+      .expect(200);
     expect(resposta.body).toHaveProperty('id', created.body.id);
   });
 
@@ -83,7 +106,10 @@ describe('Books - LectureLife', () => {
       .set('Authorization', Authorization)
       .expect(204);
 
-    await request(app).get(`/books/${created.body.id}`).expect(404);
+    await request(app)
+      .get(`/books/${created.body.id}`)
+      .set('Authorization', Authorization)
+      .expect(404);
   });
 
   test('Não deve permitir anoPublicacao no futuro', async () => {
@@ -96,5 +122,16 @@ describe('Books - LectureLife', () => {
       .expect(422);
 
     expect(resposta.body).toHaveProperty('message');
+  });
+
+  test('GET /books sem token deve retornar 401', async () => {
+    await request(app)
+      .post('/books')
+      .set('Authorization', (await authHeader()).Authorization)
+      .send({ titulo: 'Livro Público', anoPublicacao: 2010 })
+      .expect(201);
+
+    const resposta = await request(app).get('/books').expect(401);
+    expect(resposta.body).toHaveProperty('message', 'Token não fornecido');
   });
 });
