@@ -47,15 +47,14 @@ async function listBooks(filtros = {}) {
   return books.map(formatBook);
 }
 
-function resolveBookQuery(idOrTitle) {
-  if (mongoose.Types.ObjectId.isValid(idOrTitle)) {
-    return { _id: idOrTitle };
+async function getBookById(id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const error = new Error('Livro não encontrado');
+    error.statusCode = 404;
+    throw error;
   }
-  return { titulo: idOrTitle };
-}
 
-async function getBookByIdOrTitle(idOrTitle) {
-  const book = await Book.findOne(resolveBookQuery(idOrTitle));
+  const book = await Book.findById(id);
   if (!book) {
     const error = new Error('Livro não encontrado');
     error.statusCode = 404;
@@ -64,10 +63,15 @@ async function getBookByIdOrTitle(idOrTitle) {
   return formatBook(book);
 }
 
-async function updateBook(idOrTitle, data) {
+async function updateBook(id, data) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const error = new Error('Livro não encontrado');
+    error.statusCode = 404;
+    throw error;
+  }
+
   try {
-    const query = resolveBookQuery(idOrTitle);
-    const book = await Book.findOneAndUpdate(query, data, {
+    const book = await Book.findByIdAndUpdate(id, data, {
       new: true,
       runValidators: true,
     });
@@ -85,8 +89,14 @@ async function updateBook(idOrTitle, data) {
   }
 }
 
-async function deleteBook(idOrTitle) {
-  const book = await Book.findOneAndDelete(resolveBookQuery(idOrTitle));
+async function deleteBook(id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const error = new Error('Livro não encontrado');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const book = await Book.findByIdAndDelete(id);
   if (!book) {
     const error = new Error('Livro não encontrado');
     error.statusCode = 404;
@@ -97,7 +107,7 @@ async function deleteBook(idOrTitle) {
 module.exports = {
   createBook,
   listBooks,
-  getBookByIdOrTitle,
+  getBookById,
   updateBook,
   deleteBook,
 };

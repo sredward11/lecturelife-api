@@ -1,10 +1,9 @@
 const express = require('express');
 const authController = require('../controllers/authController');
-const asyncHandler = require('../utils/asyncHandler');
 
 const router = express.Router();
 
-router.post('/register', asyncHandler(authController.register));
-router.post('/login', asyncHandler(authController.login));
+router.post('/register', authController.register);
+router.post('/login', authController.login);
 
 module.exports = router;

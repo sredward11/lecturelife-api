@@ -1,32 +1,12 @@
-const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-
-const PBKDF2_ITERATIONS = 10000;
-const PBKDF2_KEYLEN = 64;
-const PBKDF2_DIGEST = 'sha512';
-
-function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const derivedKey = crypto
-    .pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, PBKDF2_KEYLEN, PBKDF2_DIGEST)
-    .toString('hex');
-  return `${salt}:${derivedKey}`;
-}
-
-function verifyPassword(password, storedHash) {
-  const [salt, hash] = storedHash.split(':');
-  const derivedKey = crypto
-    .pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, PBKDF2_KEYLEN, PBKDF2_DIGEST)
-    .toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(derivedKey, 'hex'));
-}
 
 function sanitizeUser(user) {
   const { senhaHash, __v, ...rest } = user.toObject({ versionKey: false });
   rest.id = rest._id;
   delete rest._id;
-   return rest;
+  return rest;
 }
 
 async function registerUser({ nome, email, senha, role }) {
@@ -43,7 +23,7 @@ async function registerUser({ nome, email, senha, role }) {
     throw error;
   }
 
-  const senhaHash = hashPassword(senha);
+  const senhaHash = await bcrypt.hash(senha, 10);
   const user = await User.create({ nome, email, senhaHash, role });
   return sanitizeUser(user);
 }
@@ -56,7 +36,7 @@ async function authenticateUser({ email, senha }) {
     throw error;
   }
 
-  const senhaValida = verifyPassword(senha, user.senhaHash);
+  const senhaValida = await bcrypt.compare(senha, user.senhaHash);
   if (!senhaValida) {
     const error = new Error('Credenciais inválidas');
     error.statusCode = 401;

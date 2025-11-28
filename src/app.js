@@ -1,11 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const morgan = require('morgan');
+const cors = require('cors');
 
 const { connectDatabase } = require('./config/database');
 const router = require('./routes');
 const swaggerDocs = require('./docs/swagger');
-const corsMiddleware = require('./middlewares/corsMiddleware');
 
 const app = express();
 
@@ -15,7 +15,7 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
-app.use(corsMiddleware);
+app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 

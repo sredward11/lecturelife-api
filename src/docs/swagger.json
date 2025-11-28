@@ -16,8 +16,14 @@
       "name": "Auth",
       "description": "Autenticação de usuários. No botão Authorize informe apenas o token JWT (sem prefixo 'Bearer '); o Swagger exibirá 'Authorized' mesmo com tokens inválidos e o backend retornará 401 se o token for rejeitado."
     },
-    { "name": "Books", "description": "Gestão de livros" },
-    { "name": "Readings", "description": "Gestão de leituras" }
+    {
+      "name": "Books",
+      "description": "Gestão de livros"
+    },
+    {
+      "name": "Readings",
+      "description": "Gestão de leituras"
+    }
   ],
   "components": {
     "securitySchemes": {
@@ -32,104 +38,240 @@
       "User": {
         "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "nome": { "type": "string" },
-          "email": { "type": "string", "format": "email" },
-          "role": { "type": "string", "enum": ["user", "admin"] }
+          "id": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "admin"
+            ]
+          }
         }
       },
       "AuthResponse": {
         "type": "object",
         "properties": {
-          "token": { "type": "string" },
-          "user": { "$ref": "#/components/schemas/User" }
+          "token": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
         }
       },
       "Book": {
         "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "titulo": { "type": "string" },
-          "autor": { "type": "string" }
+          "id": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "autor": {
+            "type": "string"
+          }
         },
-        "required": ["id", "titulo"]
+        "required": [
+          "id",
+          "titulo"
+        ]
       },
       "BookCreate": {
         "type": "object",
-          "properties": {
-          "titulo": { "type": "string", "example": "Clean Code" },
-          "autor": { "type": "string", "example": "Robert C. Martin" },
-          "anoPublicacao": { "type": "integer", "example": 2008 },
-          "categoria": { "type": "string", "example": "Tecnologia" },
-          "paginasTotal": { "type": "integer", "example": 464 },
-          "sinopse": { "type": "string", "example": "Boas práticas de programação." }
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "example": "Clean Code"
+          },
+          "autor": {
+            "type": "string",
+            "example": "Robert C. Martin"
+          },
+          "anoPublicacao": {
+            "type": "integer",
+            "example": 2008
+          },
+          "categoria": {
+            "type": "string",
+            "example": "Tecnologia"
+          },
+          "paginasTotal": {
+            "type": "integer",
+            "example": 464
+          },
+          "sinopse": {
+            "type": "string",
+            "example": "Boas práticas de programação."
+          }
         },
-        "required": ["titulo"]
+        "required": [
+          "titulo"
+        ]
       },
       "BookUpdate": {
         "type": "object",
         "properties": {
-          "titulo": { "type": "string" },
-          "autor": { "type": "string" },
-          "anoPublicacao": { "type": "integer" },
-          "categoria": { "type": "string" },
-          "paginasTotal": { "type": "integer" },
-          "sinopse": { "type": "string" }
+          "titulo": {
+            "type": "string"
+          },
+          "autor": {
+            "type": "string"
+          },
+          "anoPublicacao": {
+            "type": "integer"
+          },
+          "categoria": {
+            "type": "string"
+          },
+          "paginasTotal": {
+            "type": "integer"
+          },
+          "sinopse": {
+            "type": "string"
+          }
         }
       },
       "Reading": {
         "type": "object",
         "properties": {
-          "id": { "type": "string" },
+          "id": {
+            "type": "string"
+          },
           "readingId": {
             "type": "string",
             "description": "Identificador único da leitura (mesmo valor do campo id)"
           },
-          "userId": { "type": "string" },
-          "bookId": { "type": "string" },
+          "userId": {
+            "type": "string"
+          },
+          "bookId": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
-            "enum": ["planejando", "lendo", "concluido", "abandonado"]
+            "enum": [
+              "planejando",
+              "lendo",
+              "concluido",
+              "abandonado"
+            ]
           },
-          "dataInicio": { "type": "string", "format": "date-time" },
-          "dataFim": { "type": "string", "format": "date-time" },
-          "nota": { "type": "number", "minimum": 0, "maximum": 10 },
-          "paginasLidas": { "type": "integer" },
-          "favorito": { "type": "boolean" },
-          "book": { "$ref": "#/components/schemas/Book" }
+          "dataInicio": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dataFim": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nota": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "paginasLidas": {
+            "type": "integer"
+          },
+          "favorito": {
+            "type": "boolean"
+          },
+          "book": {
+            "$ref": "#/components/schemas/Book"
+          }
         },
-        "required": ["id", "readingId", "bookId", "status"]
+        "required": [
+          "id",
+          "readingId",
+          "bookId",
+          "status"
+        ]
       },
       "ReadingCreate": {
         "type": "object",
         "properties": {
-          "bookId": { "type": "string", "example": "64d9f0c2c1e8a3b2f5a6d7e8" },
+          "bookId": {
+            "type": "string",
+            "example": "64d9f0c2c1e8a3b2f5a6d7e8"
+          },
           "status": {
             "type": "string",
-            "enum": ["planejando", "lendo", "concluido", "abandonado"],
+            "enum": [
+              "planejando",
+              "lendo",
+              "concluido",
+              "abandonado"
+            ],
             "example": "lendo"
           },
-          "dataInicio": { "type": "string", "format": "date-time" },
-          "dataFim": { "type": "string", "format": "date-time" },
-          "nota": { "type": "number", "example": 9 },
-          "paginasLidas": { "type": "integer", "example": 120 },
-          "favorito": { "type": "boolean", "example": true }
+          "dataInicio": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dataFim": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nota": {
+            "type": "number",
+            "example": 9
+          },
+          "paginasLidas": {
+            "type": "integer",
+            "example": 120
+          },
+          "favorito": {
+            "type": "boolean",
+            "example": true
+          }
         },
-        "required": ["bookId"]
+        "required": [
+          "bookId"
+        ]
       },
       "ReadingUpdate": {
         "type": "object",
         "properties": {
-          "bookId": { "type": "string" },
+          "bookId": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
-            "enum": ["planejando", "lendo", "concluido", "abandonado"]
+            "enum": [
+              "planejando",
+              "lendo",
+              "concluido",
+              "abandonado"
+            ]
           },
-          "dataInicio": { "type": "string", "format": "date-time" },
-          "dataFim": { "type": "string", "format": "date-time" },
-          "nota": { "type": "number", "minimum": 0, "maximum": 10 },
-          "paginasLidas": { "type": "integer" },
-          "favorito": { "type": "boolean" }
+          "dataInicio": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dataFim": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nota": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "paginasLidas": {
+            "type": "integer"
+          },
+          "favorito": {
+            "type": "boolean"
+          }
         },
         "additionalProperties": false
       }
@@ -138,7 +280,9 @@
   "paths": {
     "/auth/register": {
       "post": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Registrar novo usuário",
         "requestBody": {
           "required": true,
@@ -147,24 +291,52 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "nome": { "type": "string", "example": "Fulano" },
-                  "email": { "type": "string", "format": "email", "example": "fulano@email.com" },
-                  "senha": { "type": "string", "format": "password", "example": "123456" }
+                  "nome": {
+                    "type": "string",
+                    "example": "Fulano"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "fulano@email.com"
+                  },
+                  "senha": {
+                    "type": "string",
+                    "format": "password",
+                    "example": "123456"
+                  }
                 },
-                "required": ["nome", "email", "senha"]
+                "required": [
+                  "nome",
+                  "email",
+                  "senha"
+                ]
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Usuário criado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
-          "422": { "description": "Dados inválidos" }
+          "201": {
+            "description": "Usuário criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos"
+          }
         }
       }
     },
     "/auth/login": {
       "post": {
-        "tags": ["Auth"],
+        "tags": [
+          "Auth"
+        ],
         "summary": "Login do usuário",
         "description": "Realiza login e retorna um token JWT. No botão Authorize do Swagger informe apenas o token (sem 'Bearer '). O status 'Authorized' não garante validade do token; se estiver inválido, as rotas protegidas responderão 401.",
         "requestBody": {
@@ -174,108 +346,193 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "email": { "type": "string", "format": "email", "example": "fulano@email.com" },
-                  "senha": { "type": "string", "format": "password", "example": "123456" }
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "fulano@email.com"
+                  },
+                  "senha": {
+                    "type": "string",
+                    "format": "password",
+                    "example": "123456"
+                  }
                 },
-                "required": ["email", "senha"]
+                "required": [
+                  "email",
+                  "senha"
+                ]
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Login realizado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
-          "401": { "description": "Credenciais inválidas" }
+          "200": {
+            "description": "Login realizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciais inválidas"
+          }
         }
       }
     },
     "/books": {
       "get": {
-        "tags": ["Books"],
+        "tags": [
+          "Books"
+        ],
         "summary": "Listar livros",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "titulo",
             "in": "query",
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "description": "Filtrar por título"
           },
           {
             "name": "categoria",
             "in": "query",
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "description": "Filtrar por categoria"
           }
         ],
         "responses": {
           "200": {
             "description": "Lista de livros",
-            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Book" } } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Book"
+                  }
+                }
+              }
+            }
           },
-          "404": { "description": "Nenhum livro encontrado para os filtros informados" }
+          "404": {
+            "description": "Nenhum livro encontrado para os filtros informados"
+          }
         }
       },
       "post": {
-        "tags": ["Books"],
+        "tags": [
+          "Books"
+        ],
         "summary": "Criar livro",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/BookCreate" }
+              "schema": {
+                "$ref": "#/components/schemas/BookCreate"
+              }
             }
           }
         },
         "responses": {
           "201": {
             "description": "Livro criado",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Book" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
           },
-          "422": { "description": "Dados inválidos" }
+          "422": {
+            "description": "Dados inválidos"
+          }
         }
       }
     },
-    "/books/{idOrTitle}": {
+    "/books/{id}": {
       "get": {
-        "tags": ["Books"],
-        "summary": "Buscar livro por ID ou título",
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Books"
+        ],
+        "summary": "Buscar livro por ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
-            "name": "idOrTitle",
+            "name": "id",
             "in": "path",
             "required": true,
-            "description": "ID do livro (ObjectId) ou título exato",
-            "schema": { "type": "string" }
+            "description": "ID do livro (ObjectId)",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "Livro encontrado",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Book" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
           },
-          "404": { "description": "Livro não encontrado" }
+          "404": {
+            "description": "Livro não encontrado"
+          }
         }
       },
       "put": {
-        "tags": ["Books"],
-        "summary": "Atualizar livro por ID ou título",
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Books"
+        ],
+        "summary": "Atualizar livro por ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
-            "name": "idOrTitle",
+            "name": "id",
             "in": "path",
             "required": true,
-            "description": "ID do livro (ObjectId) ou título exato",
-            "schema": { "type": "string" }
+            "description": "ID do livro (ObjectId)",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/BookUpdate" },
+              "schema": {
+                "$ref": "#/components/schemas/BookUpdate"
+              },
               "example": {
                 "titulo": "Novo título",
                 "autor": "Novo autor",
@@ -288,69 +545,126 @@
           }
         },
         "responses": {
-          "200": { "description": "Livro atualizado com sucesso", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Book" } } } },
-          "404": { "description": "Livro não encontrado" },
-          "422": { "description": "Dados inválidos" }
+          "200": {
+            "description": "Livro atualizado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Book"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Livro não encontrado"
+          },
+          "422": {
+            "description": "Dados inválidos"
+          }
         }
       },
       "delete": {
-        "tags": ["Books"],
-        "summary": "Remover livro por ID ou título",
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Books"
+        ],
+        "summary": "Remover livro por ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
-            "name": "idOrTitle",
+            "name": "id",
             "in": "path",
             "required": true,
-            "description": "ID do livro (ObjectId) ou título exato",
-            "schema": { "type": "string" }
+            "description": "ID do livro (ObjectId)",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
-          "204": { "description": "Remoção realizada" },
-          "404": { "description": "Livro não encontrado" }
+          "204": {
+            "description": "Remoção realizada"
+          },
+          "404": {
+            "description": "Livro não encontrado"
+          }
         }
       }
     },
     "/readings": {
       "get": {
-        "tags": ["Readings"],
+        "tags": [
+          "Readings"
+        ],
         "summary": "Listar leituras do usuário",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "status",
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["planejando", "lendo", "concluido", "abandonado"]
+              "enum": [
+                "planejando",
+                "lendo",
+                "concluido",
+                "abandonado"
+              ]
             },
             "description": "Filtrar por status"
           },
           {
             "name": "categoria",
             "in": "query",
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "description": "Filtrar por categoria do livro"
           }
         ],
         "responses": {
           "200": {
             "description": "Lista de leituras",
-            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Reading" } } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Reading"
+                  }
+                }
+              }
+            }
           },
-          "404": { "description": "Nenhuma leitura encontrada para os filtros informados" }
+          "404": {
+            "description": "Nenhuma leitura encontrada para os filtros informados"
+          }
         }
       },
       "post": {
-        "tags": ["Readings"],
+        "tags": [
+          "Readings"
+        ],
         "summary": "Criar leitura",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ReadingCreate" },
+              "schema": {
+                "$ref": "#/components/schemas/ReadingCreate"
+              },
               "example": {
                 "bookId": "64d9f0c2c1e8a3b2f5a6d7e8",
                 "status": "lendo",
@@ -363,49 +677,86 @@
         "responses": {
           "201": {
             "description": "Leitura criada",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Reading" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reading"
+                }
+              }
+            }
           },
-          "422": { "description": "Dados inválidos" }
+          "422": {
+            "description": "Dados inválidos"
+          }
         }
       }
     },
     "/readings/{id}": {
       "get": {
-        "tags": ["Readings"],
+        "tags": [
+          "Readings"
+        ],
         "summary": "Detalhar leitura",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "description": "ID da leitura (não do livro)",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "Leitura encontrada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Reading" } } } },
-          "404": { "description": "Leitura não encontrada" }
+          "200": {
+            "description": "Leitura encontrada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reading"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Leitura não encontrada"
+          }
         }
       },
       "put": {
-        "tags": ["Readings"],
+        "tags": [
+          "Readings"
+        ],
         "summary": "Atualizar leitura",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "description": "ID da leitura (não do livro)",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ReadingUpdate" },
+              "schema": {
+                "$ref": "#/components/schemas/ReadingUpdate"
+              },
               "example": {
                 "status": "concluido",
                 "dataInicio": "2024-01-01T00:00:00.000Z",
@@ -419,36 +770,64 @@
         "responses": {
           "200": {
             "description": "Leitura atualizada",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Reading" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reading"
+                }
+              }
+            }
           },
-          "404": { "description": "Leitura não encontrada" },
-          "422": { "description": "Dados inválidos" }
+          "404": {
+            "description": "Leitura não encontrada"
+          },
+          "422": {
+            "description": "Dados inválidos"
+          }
         }
       },
       "delete": {
-        "tags": ["Readings"],
+        "tags": [
+          "Readings"
+        ],
         "summary": "Remover leitura",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "description": "ID da leitura (não do livro)",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
-          "204": { "description": "Leitura removida" },
-          "404": { "description": "Leitura não encontrada" }
+          "204": {
+            "description": "Leitura removida"
+          },
+          "404": {
+            "description": "Leitura não encontrada"
+          }
         }
       }
     },
     "/readings/stats": {
       "get": {
-        "tags": ["Readings"],
+        "tags": [
+          "Readings"
+        ],
         "summary": "Estatísticas das leituras do usuário",
-        "security": [{ "bearerAuth": [] }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Resumo de leituras",
@@ -457,10 +836,18 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "totalLeituras": { "type": "integer" },
-                    "concluidos": { "type": "integer" },
-                    "totalPaginasLidos": { "type": "integer" },
-                    "mediaNotas": { "type": "number" }
+                    "totalLeituras": {
+                      "type": "integer"
+                    },
+                    "concluidos": {
+                      "type": "integer"
+                    },
+                    "totalPaginasLidos": {
+                      "type": "integer"
+                    },
+                    "mediaNotas": {
+                      "type": "number"
+                    }
                   }
                 }
               }
@@ -471,4 +858,3 @@
     }
   }
 }
-
