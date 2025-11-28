@@ -2,10 +2,10 @@
   "name": "lecturelife",
   "version": "1.0.0",
   "description": "API LectureLife - gestão de livros e leituras",
-  "main": "app.js",
+  "main": "src/app.js",
   "scripts": {
-    "start": "node bin/www",
-    "dev": "nodemon bin/www",
+    "start": "node src/bin/www",
+    "dev": "nodemon src/bin/www",
     "test": "jest --runInBand",
     "test:watch": "jest --watch"
   },
@@ -24,7 +24,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
-    "jest": "^29.0.0",
+    "jest": "^29.7.0",
     "mongodb-memory-server": "^10.3.0",
     "nodemon": "^3.0.0",
     "supertest": "^6.3.0"
