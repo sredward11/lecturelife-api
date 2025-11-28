@@ -1,14 +1,27 @@
 {
-  "name": "lecturelife-api",
-  "version": "0.0.0",
-  "private": true,
+  "name": "lecturelife",
+  "version": "1.0.0",
+  "main": "src/app.js",
   "scripts": {
-    "start": "node ./bin/www"
+    "start": "node src/bin/www",
+    "dev": "nodemon src/bin/www",
+    "test": "jest --runInBand"
   },
   "dependencies": {
-    "cookie-parser": "~1.4.4",
-    "debug": "~2.6.9",
-    "express": "~4.16.1",
-    "morgan": "~1.9.1"
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.0",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.0.0",
+    "morgan": "^1.10.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^10.3.0",
+    "nodemon": "^3.0.0",
+    "supertest": "^6.3.0"
   }
 }
