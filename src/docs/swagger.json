@@ -11,10 +11,15 @@
       "description": "Servidor local"
     }
   ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "tags": [
     {
       "name": "Auth",
-      "description": "Autenticação de usuários. No botão Authorize informe apenas o token JWT (sem prefixo 'Bearer '); o Swagger exibirá 'Authorized' mesmo com tokens inválidos e o backend retornará 401 se o token for rejeitado."
+      "description": "Autenticação de usuários"
     },
     {
       "name": "Books",
@@ -31,7 +36,62 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "Informe apenas o token JWT (sem prefixo 'Bearer '). O indicador 'Authorized' do Swagger não valida o token; a checagem real acontece no backend e retornará 401 em caso de token inválido."
+        "description": "Informe apenas o token JWT."
+      }
+    },
+    "parameters": {
+      "idParam": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "ID do registro (ObjectId)",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "tituloQuery": {
+        "name": "titulo",
+        "in": "query",
+        "description": "Filtrar por título",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "categoriaQuery": {
+        "name": "categoria",
+        "in": "query",
+        "description": "Filtrar por categoria",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "statusQuery": {
+        "name": "status",
+        "in": "query",
+        "description": "Filtrar por status",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "planejando",
+            "lendo",
+            "concluido",
+            "abandonado"
+          ]
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Token não fornecido ou inválido"
+      },
+      "NotFound": {
+        "description": "Recurso não encontrado"
+      },
+      "ValidationError": {
+        "description": "Dados de entrada inválidos"
+      },
+      "NoContent": {
+        "description": "Operação realizada com sucesso"
       }
     },
     "schemas": {
@@ -70,6 +130,10 @@
       },
       "Book": {
         "type": "object",
+        "required": [
+          "id",
+          "titulo"
+        ],
         "properties": {
           "id": {
             "type": "string"
@@ -79,15 +143,26 @@
           },
           "autor": {
             "type": "string"
+          },
+          "anoPublicacao": {
+            "type": "integer"
+          },
+          "categoria": {
+            "type": "string"
+          },
+          "paginasTotal": {
+            "type": "integer"
+          },
+          "sinopse": {
+            "type": "string"
           }
-        },
-        "required": [
-          "id",
-          "titulo"
-        ]
+        }
       },
       "BookCreate": {
         "type": "object",
+        "required": [
+          "titulo"
+        ],
         "properties": {
           "titulo": {
             "type": "string",
@@ -111,12 +186,9 @@
           },
           "sinopse": {
             "type": "string",
-            "example": "Boas práticas de programação."
+            "example": "Boas práticas."
           }
-        },
-        "required": [
-          "titulo"
-        ]
+        }
       },
       "BookUpdate": {
         "type": "object",
@@ -143,13 +215,18 @@
       },
       "Reading": {
         "type": "object",
+        "required": [
+          "id",
+          "readingId",
+          "bookId",
+          "status"
+        ],
         "properties": {
           "id": {
             "type": "string"
           },
           "readingId": {
-            "type": "string",
-            "description": "Identificador único da leitura (mesmo valor do campo id)"
+            "type": "string"
           },
           "userId": {
             "type": "string"
@@ -188,16 +265,13 @@
           "book": {
             "$ref": "#/components/schemas/Book"
           }
-        },
-        "required": [
-          "id",
-          "readingId",
-          "bookId",
-          "status"
-        ]
+        }
       },
       "ReadingCreate": {
         "type": "object",
+        "required": [
+          "bookId"
+        ],
         "properties": {
           "bookId": {
             "type": "string",
@@ -213,37 +287,20 @@
             ],
             "example": "lendo"
           },
-          "dataInicio": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "dataFim": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "nota": {
-            "type": "number",
-            "example": 9
-          },
           "paginasLidas": {
             "type": "integer",
-            "example": 120
+            "example": 50
           },
           "favorito": {
             "type": "boolean",
             "example": true
           }
-        },
-        "required": [
-          "bookId"
-        ]
+        }
       },
       "ReadingUpdate": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
-          "bookId": {
-            "type": "string"
-          },
           "status": {
             "type": "string",
             "enum": [
@@ -272,8 +329,24 @@
           "favorito": {
             "type": "boolean"
           }
-        },
-        "additionalProperties": false
+        }
+      },
+      "ReadingStats": {
+        "type": "object",
+        "properties": {
+          "totalLeituras": {
+            "type": "integer"
+          },
+          "concluidos": {
+            "type": "integer"
+          },
+          "totalPaginasLidos": {
+            "type": "integer"
+          },
+          "mediaNotas": {
+            "type": "number"
+          }
+        }
       }
     }
   },
@@ -284,12 +357,18 @@
           "Auth"
         ],
         "summary": "Registrar novo usuário",
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "nome",
+                  "email",
+                  "senha"
+                ],
                 "properties": {
                   "nome": {
                     "type": "string",
@@ -305,12 +384,7 @@
                     "format": "password",
                     "example": "123456"
                   }
-                },
-                "required": [
-                  "nome",
-                  "email",
-                  "senha"
-                ]
+                }
               }
             }
           }
@@ -327,7 +401,7 @@
             }
           },
           "422": {
-            "description": "Dados inválidos"
+            "$ref": "#/components/responses/ValidationError"
           }
         }
       }
@@ -338,13 +412,17 @@
           "Auth"
         ],
         "summary": "Login do usuário",
-        "description": "Realiza login e retorna um token JWT. No botão Authorize do Swagger informe apenas o token (sem 'Bearer '). O status 'Authorized' não garante validade do token; se estiver inválido, as rotas protegidas responderão 401.",
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "email",
+                  "senha"
+                ],
                 "properties": {
                   "email": {
                     "type": "string",
@@ -356,11 +434,7 @@
                     "format": "password",
                     "example": "123456"
                   }
-                },
-                "required": [
-                  "email",
-                  "senha"
-                ]
+                }
               }
             }
           }
@@ -377,7 +451,7 @@
             }
           },
           "401": {
-            "description": "Credenciais inválidas"
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -388,27 +462,12 @@
           "Books"
         ],
         "summary": "Listar livros",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "parameters": [
           {
-            "name": "titulo",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Filtrar por título"
+            "$ref": "#/components/parameters/tituloQuery"
           },
           {
-            "name": "categoria",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Filtrar por categoria"
+            "$ref": "#/components/parameters/categoriaQuery"
           }
         ],
         "responses": {
@@ -426,7 +485,10 @@
             }
           },
           "404": {
-            "description": "Nenhum livro encontrado para os filtros informados"
+            "$ref": "#/components/responses/NotFound"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       },
@@ -435,11 +497,6 @@
           "Books"
         ],
         "summary": "Criar livro",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -462,7 +519,10 @@
             }
           },
           "422": {
-            "description": "Dados inválidos"
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -473,20 +533,9 @@
           "Books"
         ],
         "summary": "Buscar livro por ID",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "parameters": [
           {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "ID do livro (ObjectId)",
-            "schema": {
-              "type": "string"
-            }
+            "$ref": "#/components/parameters/idParam"
           }
         ],
         "responses": {
@@ -501,7 +550,10 @@
             }
           },
           "404": {
-            "description": "Livro não encontrado"
+            "$ref": "#/components/responses/NotFound"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       },
@@ -510,20 +562,9 @@
           "Books"
         ],
         "summary": "Atualizar livro por ID",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "parameters": [
           {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "ID do livro (ObjectId)",
-            "schema": {
-              "type": "string"
-            }
+            "$ref": "#/components/parameters/idParam"
           }
         ],
         "requestBody": {
@@ -532,21 +573,13 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/BookUpdate"
-              },
-              "example": {
-                "titulo": "Novo título",
-                "autor": "Novo autor",
-                "anoPublicacao": 2024,
-                "categoria": "Romance",
-                "paginasTotal": 300,
-                "sinopse": "Texto opcional"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Livro atualizado com sucesso",
+            "description": "Livro atualizado",
             "content": {
               "application/json": {
                 "schema": {
@@ -556,10 +589,13 @@
             }
           },
           "404": {
-            "description": "Livro não encontrado"
+            "$ref": "#/components/responses/NotFound"
           },
           "422": {
-            "description": "Dados inválidos"
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       },
@@ -568,28 +604,20 @@
           "Books"
         ],
         "summary": "Remover livro por ID",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "parameters": [
           {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "ID do livro (ObjectId)",
-            "schema": {
-              "type": "string"
-            }
+            "$ref": "#/components/parameters/idParam"
           }
         ],
         "responses": {
           "204": {
-            "description": "Remoção realizada"
+            "$ref": "#/components/responses/NoContent"
           },
           "404": {
-            "description": "Livro não encontrado"
+            "$ref": "#/components/responses/NotFound"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -599,34 +627,13 @@
         "tags": [
           "Readings"
         ],
-        "summary": "Listar leituras do usuário",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
+        "summary": "Listar leituras",
         "parameters": [
           {
-            "name": "status",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "planejando",
-                "lendo",
-                "concluido",
-                "abandonado"
-              ]
-            },
-            "description": "Filtrar por status"
+            "$ref": "#/components/parameters/statusQuery"
           },
           {
-            "name": "categoria",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Filtrar por categoria do livro"
+            "$ref": "#/components/parameters/categoriaQuery"
           }
         ],
         "responses": {
@@ -644,7 +651,10 @@
             }
           },
           "404": {
-            "description": "Nenhuma leitura encontrada para os filtros informados"
+            "$ref": "#/components/responses/NotFound"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       },
@@ -653,23 +663,12 @@
           "Readings"
         ],
         "summary": "Criar leitura",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ReadingCreate"
-              },
-              "example": {
-                "bookId": "64d9f0c2c1e8a3b2f5a6d7e8",
-                "status": "lendo",
-                "paginasLidas": 50,
-                "favorito": true
               }
             }
           }
@@ -686,7 +685,33 @@
             }
           },
           "422": {
-            "description": "Dados inválidos"
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/readings/stats": {
+      "get": {
+        "tags": [
+          "Readings"
+        ],
+        "summary": "Estatísticas das leituras",
+        "responses": {
+          "200": {
+            "description": "Resumo de leituras",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadingStats"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -697,20 +722,9 @@
           "Readings"
         ],
         "summary": "Detalhar leitura",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "parameters": [
           {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "ID da leitura (não do livro)",
-            "schema": {
-              "type": "string"
-            }
+            "$ref": "#/components/parameters/idParam"
           }
         ],
         "responses": {
@@ -725,7 +739,10 @@
             }
           },
           "404": {
-            "description": "Leitura não encontrada"
+            "$ref": "#/components/responses/NotFound"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       },
@@ -734,20 +751,9 @@
           "Readings"
         ],
         "summary": "Atualizar leitura",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "parameters": [
           {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "ID da leitura (não do livro)",
-            "schema": {
-              "type": "string"
-            }
+            "$ref": "#/components/parameters/idParam"
           }
         ],
         "requestBody": {
@@ -756,13 +762,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ReadingUpdate"
-              },
-              "example": {
-                "status": "concluido",
-                "dataInicio": "2024-01-01T00:00:00.000Z",
-                "dataFim": "2024-01-10T00:00:00.000Z",
-                "paginasLidas": 300,
-                "nota": 9
               }
             }
           }
@@ -779,10 +778,13 @@
             }
           },
           "404": {
-            "description": "Leitura não encontrada"
+            "$ref": "#/components/responses/NotFound"
           },
           "422": {
-            "description": "Dados inválidos"
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       },
@@ -791,67 +793,20 @@
           "Readings"
         ],
         "summary": "Remover leitura",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "parameters": [
           {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "ID da leitura (não do livro)",
-            "schema": {
-              "type": "string"
-            }
+            "$ref": "#/components/parameters/idParam"
           }
         ],
         "responses": {
           "204": {
-            "description": "Leitura removida"
+            "$ref": "#/components/responses/NoContent"
           },
           "404": {
-            "description": "Leitura não encontrada"
-          }
-        }
-      }
-    },
-    "/readings/stats": {
-      "get": {
-        "tags": [
-          "Readings"
-        ],
-        "summary": "Estatísticas das leituras do usuário",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resumo de leituras",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "totalLeituras": {
-                      "type": "integer"
-                    },
-                    "concluidos": {
-                      "type": "integer"
-                    },
-                    "totalPaginasLidos": {
-                      "type": "integer"
-                    },
-                    "mediaNotas": {
-                      "type": "number"
-                    }
-                  }
-                }
-              }
-            }
+            "$ref": "#/components/responses/NotFound"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
