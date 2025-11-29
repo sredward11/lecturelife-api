@@ -4,21 +4,25 @@ const bookSchema = new mongoose.Schema(
   {
     titulo: {
       type: String,
-      required: [true, 'O título é obrigatório'],
+      required: [true, 'Título é obrigatório'],
+      minlength: [2, 'Título deve ter ao menos 2 caracteres'],
+      maxlength: [160, 'Título deve ter no máximo 160 caracteres'],
       trim: true,
     },
     autor: {
       type: String,
-      required: [true, 'O autor é obrigatório'],
       trim: true,
     },
     anoPublicacao: {
       type: Number,
+      min: [0, 'Ano de publicação inválido'],
       validate: {
-        validator: function (v) {
-          return v <= new Date().getFullYear();
+        validator(value) {
+          if (value === undefined) return true;
+          const anoAtual = new Date().getFullYear();
+          return value <= anoAtual;
         },
-        message: 'O ano de publicação não pode ser futuro',
+        message: 'Ano de publicação não pode ser maior que o ano atual',
       },
     },
     categoria: {
@@ -27,8 +31,7 @@ const bookSchema = new mongoose.Schema(
     },
     paginasTotal: {
       type: Number,
-      required: true,
-      min: 1,
+      min: [1, 'Número de páginas deve ser positivo'],
     },
     sinopse: {
       type: String,
