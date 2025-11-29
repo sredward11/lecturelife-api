@@ -17,7 +17,6 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Rotas Base
 app.use('/', routes);
 
 // Handler de 404
