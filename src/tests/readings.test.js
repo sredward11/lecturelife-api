@@ -1,80 +1,207 @@
 const request = require('supertest');
-const app = require('../app');
-const { createAndLoginUser, createBook } = require('./helpers');
+const { app, createAndLoginUser, createBook } = require('./helpers');
 
-describe('Readings Endpoints', () => {
-  let token;
-  let book;
-  let userId;
+describe('Readings - LectureLife', () => {
+    async function setupUserAndBook(overrides = {}) {
+        const { token, user } = await createAndLoginUser();
+        const book = await createBook(token, overrides.book || {});
+        return { token, user, book };
+    }
 
-  beforeEach(async () => {
-    const auth = await createAndLoginUser();
-    token = auth.token;
-    userId = auth.userId;
-    book = await createBook(token);
-  });
+    test('GET /readings sem token deve retornar 401', async () => {
+        const resposta = await request(app).get('/readings').expect(401);
+        expect(resposta.body).toHaveProperty('message', 'Token não fornecido');
+    });
 
-  it('deve criar uma leitura', async () => {
-    const res = await request(app)
-      .post('/readings')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        bookId: book._id,
-        status: 'planejando',
-      });
+    test('POST /readings deve criar leitura para usuário autenticado', async () => {
+        const { token, book } = await setupUserAndBook();
+        const resposta = await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'lendo' })
+            .expect(201);
 
-    expect(res.statusCode).toEqual(201);
-    expect(res.body.bookId).toBe(book._id);
-    expect(res.body.userId).toBe(userId);
-  });
+        expect(resposta.body).toHaveProperty('status', 'lendo');
+        expect(resposta.body).toHaveProperty('dataInicio');
+        expect(resposta.body).toHaveProperty('readingId', resposta.body.id);
+    });
 
-  it('não deve permitir leitura duplicada ativa', async () => {
-    await request(app)
-      .post('/readings')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ bookId: book._id, status: 'lendo' });
+    test('POST /readings deve impedir duplicidade ativa', async () => {
+        const { token, book } = await setupUserAndBook();
 
-    const res = await request(app)
-      .post('/readings')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ bookId: book._id, status: 'lendo' });
+        await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'lendo' })
+            .expect(201);
 
-    expect(res.statusCode).toEqual(409);
-  });
+        const resposta = await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'planejando' })
+            .expect(409);
 
-  it('deve listar leituras do usuário', async () => {
-    await request(app)
-      .post('/readings')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ bookId: book._id, status: 'planejando' });
+        expect(resposta.body).toHaveProperty('message', 'Já existe uma leitura ativa para este livro');
+    });
 
-    const res = await request(app)
-      .get('/readings')
-      .set('Authorization', `Bearer ${token}`);
+    test('POST /readings deve validar páginas lidas', async () => {
+        const { token, book } = await setupUserAndBook({ book: { paginasTotal: 100 } });
 
-    expect(res.statusCode).toEqual(200);
-    expect(res.body.length).toBe(1);
-  });
+        const resposta = await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'lendo', paginasLidas: 150 })
+            .expect(422);
 
-  it('deve atualizar leitura (concluir e dar nota)', async () => {
-    const reading = await request(app)
-      .post('/readings')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ bookId: book._id, status: 'lendo' });
+        expect(resposta.body).toHaveProperty('message');
+    });
 
-    const res = await request(app)
-      .put(`/readings/${reading.body._id}`)
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        status: 'concluido',
-        nota: 9,
-        dataInicio: new Date(),
-        dataFim: new Date(),
-        paginasLidas: 200,
-      });
+    test('POST /readings não deve aceitar nota quando status diferente de concluido', async () => {
+        const { token, book } = await setupUserAndBook();
 
-    expect(res.statusCode).toEqual(200);
-    expect(res.body.status).toBe('concluido');
-    expect(res.body.nota).toBe(9);
-  });
+        const resposta = await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'lendo', nota: 8 })
+            .expect(422);
+
+        expect(resposta.body).toHaveProperty(
+            'message',
+            'Nota só pode ser informada quando a leitura estiver concluída'
+        );
+    });
+
+    test('PUT /readings/:id deve concluir leitura com nota válida', async () => {
+        const { token, book } = await setupUserAndBook({ book: { paginasTotal: 200 } });
+
+        const created = await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'lendo', paginasLidas: 50 })
+            .expect(201);
+
+        const hoje = new Date().toISOString();
+        const resposta = await request(app)
+            .put(`/readings/${created.body.id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                status: 'concluido',
+                dataInicio: created.body.dataInicio,
+                dataFim: hoje,
+                paginasLidas: 200,
+                nota: 9,
+            })
+            .expect(200);
+
+        expect(resposta.body).toHaveProperty('status', 'concluido');
+        expect(resposta.body).toHaveProperty('nota', 9);
+    });
+
+    test('PUT /readings/:id deve respeitar regras de datas', async () => {
+        const { token, book } = await setupUserAndBook();
+
+        const created = await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'planejando' })
+            .expect(201);
+
+        const resposta = await request(app)
+            .put(`/readings/${created.body.id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ status: 'concluido', dataFim: '2024-01-01' })
+            .expect(422);
+
+        expect(resposta.body).toHaveProperty('message', 'dataInicio é obrigatória para leituras concluídas');
+    });
+
+    test('GET /readings deve filtrar por status e categoria', async () => {
+        const { token, book } = await setupUserAndBook({ book: { categoria: 'fantasia' } });
+        await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'planejando' })
+            .expect(201);
+
+        const resposta = await request(app)
+            .get('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .query({ status: 'planejando', categoria: 'fantasia' })
+            .expect(200);
+
+        expect(resposta.body).toHaveLength(1);
+    });
+
+    test('GET /readings deve retornar 404 quando filtros não encontrarem leituras', async () => {
+        const { token, book } = await setupUserAndBook({ book: { categoria: 'aventura' } });
+        await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'planejando' })
+            .expect(201);
+
+        const resposta = await request(app)
+            .get('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .query({ status: 'concluido', categoria: 'romance' })
+            .expect(404);
+
+        expect(resposta.body).toHaveProperty('message', 'Nenhuma leitura encontrada para os filtros informados');
+    });
+
+    test('GET /readings/stats deve retornar resumo do usuário', async () => {
+        const { token, book } = await setupUserAndBook({ book: { paginasTotal: 120 } });
+
+        const created = await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'lendo', paginasLidas: 100 })
+            .expect(201);
+
+        await request(app)
+            .put(`/readings/${created.body.id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({
+                status: 'concluido',
+                dataInicio: created.body.dataInicio,
+                dataFim: new Date().toISOString(),
+                paginasLidas: 120,
+                nota: 8,
+            })
+            .expect(200);
+
+        const resposta = await request(app)
+            .get('/readings/stats')
+            .set('Authorization', `Bearer ${token}`)
+            .expect(200);
+
+        expect(resposta.body).toMatchObject({ concluidos: 1, totalLeituras: 1 });
+        expect(resposta.body.mediaNotas).toBeGreaterThan(0);
+    });
+
+    test('PUT /readings deve recusar campos extras e status inválido', async () => {
+        const { token, book } = await setupUserAndBook();
+
+        const created = await request(app)
+            .post('/readings')
+            .set('Authorization', `Bearer ${token}`)
+            .send({ bookId: book.id, status: 'planejando' })
+            .expect(201);
+
+        const respostaExtra = await request(app)
+            .put(`/readings/${created.body.id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ status: 'lendo', campoInvalido: true })
+            .expect(422);
+
+        expect(respostaExtra.body).toHaveProperty('message', 'Campos não permitidos no corpo da requisição');
+
+        const respostaStatus = await request(app)
+            .put(`/readings/${created.body.id}`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ status: '' })
+            .expect(422);
+
+        expect(respostaStatus.body).toHaveProperty('message', 'Status de leitura inválido');
+    });
 });
