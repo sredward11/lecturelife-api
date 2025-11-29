@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const User = require('../models/user');
+const User = require('../models/User');
 
 function sanitizeUser(user) {
   const { senhaHash, __v, ...rest } = user.toObject({ versionKey: false });

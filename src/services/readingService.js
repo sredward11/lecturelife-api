@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Book = require('../models/Book');
-const Reading = require('../models/reading');
+const Reading = require('../models/Reading');
 
 const ACTIVE_STATUSES = ['planejando', 'lendo'];
 const ALLOWED_STATUSES = ['planejando', 'lendo', 'concluido', 'abandonado'];
@@ -132,7 +132,7 @@ async function createReading(userId, payload) {
 
 async function listReadings(userId, filtros = {}) {
   const query = { userId };
-  
+
   if (filtros.status) {
     if (!ALLOWED_STATUSES.includes(filtros.status)) {
       const error = new Error('Status de leitura inválido');
@@ -306,13 +306,13 @@ async function getStats(userId) {
   ]);
 
   let totalLeituras = 0;
-  let totalPaginas = 0; 
+  let totalPaginas = 0;
   let concluidos = 0;
   let notas = [];
 
   stats.forEach((registro) => {
     totalLeituras += registro.total;
-    totalPaginas += registro.paginas; 
+    totalPaginas += registro.paginas;
     if (registro._id === 'concluido') {
       concluidos = registro.total;
       notas = registro.notas.filter((nota) => nota !== undefined && nota !== null);
@@ -326,7 +326,7 @@ async function getStats(userId) {
   return {
     totalLeituras,
     concluidos,
-    totalPaginasLidos: totalPaginas, 
+    totalPaginasLidos: totalPaginas,
     mediaNotas: Number(mediaNotas.toFixed(2)),
   };
 }

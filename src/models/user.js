@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema(
     senhaHash: {
       type: String,
       required: true,
+      unique: false,
     },
     role: {
       type: String,

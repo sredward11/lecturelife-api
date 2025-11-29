@@ -1,50 +1,69 @@
 const request = require('supertest');
 const app = require('../app');
 
-describe('Auth Endpoints', () => {
-  it('deve registrar um novo usuário com sucesso', async () => {
-    const res = await request(app).post('/auth/register').send({
-      nome: 'Novo Usuário',
-      email: 'novo@email.com',
-      senha: 'senha123',
+function buildUserPayload(overrides = {}) {
+    return {
+        nome: 'Fulano de Tal',
+        email: 'fulano@example.com',
+        senha: 'segredo123',
+        ...overrides,
+    };
+}
+
+describe('Auth - LectureLife', () => {
+    test('POST /auth/register deve criar usuário', async () => {
+        const resposta = await request(app)
+            .post('/auth/register')
+            .send(buildUserPayload())
+            .expect(201);
+
+        expect(resposta.body).toMatchObject({
+            nome: 'Fulano de Tal',
+            email: 'fulano@example.com',
+            role: 'user',
+        });
+        expect(resposta.body).not.toHaveProperty('senhaHash');
     });
 
-    expect(res.statusCode).toEqual(201);
-    expect(res.body).toHaveProperty('id');
-    expect(res.body).toHaveProperty('email', 'novo@email.com');
-    expect(res.body).not.toHaveProperty('senhaHash'); // Garante sanitização
-  });
+    test('POST /auth/register com email duplicado deve retornar 409', async () => {
+        await request(app).post('/auth/register').send(buildUserPayload()).expect(201);
+        const resposta = await request(app)
+            .post('/auth/register')
+            .send(buildUserPayload())
+            .expect(409);
 
-  it('não deve permitir email duplicado', async () => {
-    await request(app).post('/auth/register').send({
-      nome: 'User 1',
-      email: 'duplicado@email.com',
-      senha: '123',
+        expect(resposta.body).toHaveProperty('message', 'Email já cadastrado');
     });
 
-    const res = await request(app).post('/auth/register').send({
-      nome: 'User 2',
-      email: 'duplicado@email.com',
-      senha: '456',
+    test('POST /auth/login deve retornar token válido', async () => {
+        await request(app).post('/auth/register').send(buildUserPayload()).expect(201);
+
+        const resposta = await request(app)
+            .post('/auth/login')
+            .send({ email: 'fulano@example.com', senha: 'segredo123' })
+            .expect(200);
+
+        expect(resposta.body).toHaveProperty('token');
+        expect(resposta.body).toHaveProperty('user.email', 'fulano@example.com');
     });
 
-    expect(res.statusCode).toEqual(409);
-  });
+    test('POST /auth/login com email inexistente deve retornar 404', async () => {
+        const resposta = await request(app)
+            .post('/auth/login')
+            .send({ email: 'naoexiste@example.com', senha: '123456' })
+            .expect(404);
 
-  it('deve fazer login e retornar token', async () => {
-    // Registrar primeiro
-    await request(app).post('/auth/register').send({
-      nome: 'Login User',
-      email: 'login@email.com',
-      senha: 'password',
+        expect(resposta.body).toHaveProperty('message', 'Usuário não encontrado');
     });
 
-    const res = await request(app).post('/auth/login').send({
-      email: 'login@email.com',
-      senha: 'password',
-    });
+    test('POST /auth/login com senha errada deve retornar 401', async () => {
+        await request(app).post('/auth/register').send(buildUserPayload()).expect(201);
 
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toHaveProperty('token');
-  });
+        const resposta = await request(app)
+            .post('/auth/login')
+            .send({ email: 'fulano@example.com', senha: 'senha_errada' })
+            .expect(401);
+
+        expect(resposta.body).toHaveProperty('message', 'Credenciais inválidas');
+    });
 });
