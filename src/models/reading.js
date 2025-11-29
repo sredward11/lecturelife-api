@@ -44,4 +44,4 @@ const readingSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model('Reading', readingSchema);
+module.exports = mongoose.model('reading', readingSchema);
