@@ -1,85 +1,137 @@
 const request = require('supertest');
-const app = require('../app');
-const { createAndLoginUser } = require('./helpers');
+const { app, createAndLoginUser, createBook } = require('./helpers');
 
-describe('Books Endpoints', () => {
-  let token;
+async function authHeader() {
+    const { token } = await createAndLoginUser();
+    return { Authorization: `Bearer ${token}`, token };
+}
 
-  beforeEach(async () => {
-    const auth = await createAndLoginUser();
-    token = auth.token;
-  });
+describe('Books - LectureLife', () => {
+    test('POST /books deve criar livro quando autenticado', async () => {
+        const { Authorization } = await authHeader();
+        const resposta = await request(app)
+            .post('/books')
+            .set('Authorization', Authorization)
+            .send({ titulo: 'Clean Code', anoPublicacao: 2008 })
+            .expect(201);
 
-  it('deve criar um novo livro', async () => {
-    const res = await request(app)
-      .post('/books')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        titulo: 'Node.js in Action',
-        autor: 'Cantelon',
-        anoPublicacao: 2017,
-        categoria: 'Tecnologia',
-        paginasTotal: 400,
-      });
+        expect(resposta.body).toHaveProperty('id');
+        expect(resposta.body).toHaveProperty('titulo', 'Clean Code');
+    });
 
-    expect(res.statusCode).toEqual(201);
-    expect(res.body.titulo).toBe('Node.js in Action');
-  });
+    test('POST /books sem token deve retornar 401', async () => {
+        const resposta = await request(app)
+            .post('/books')
+            .send({ titulo: 'Livro sem token' })
+            .expect(401);
 
-  it('deve listar livros', async () => {
-    await request(app)
-      .post('/books')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ titulo: 'Livro A', autor: 'A', paginasTotal: 100 });
+        expect(resposta.body).toHaveProperty('message', 'Token não fornecido');
+    });
 
-    const res = await request(app)
-      .get('/books')
-      .set('Authorization', `Bearer ${token}`);
+    test('GET /books deve listar livros cadastrados', async () => {
+        const { Authorization } = await authHeader();
+        await request(app)
+            .post('/books')
+            .set('Authorization', Authorization)
+            .send({ titulo: 'Livro 1', anoPublicacao: 2010 })
+            .expect(201);
 
-    expect(res.statusCode).toEqual(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBeGreaterThan(0);
-  });
+        const resposta = await request(app)
+            .get('/books')
+            .set('Authorization', Authorization)
+            .expect(200);
+        expect(Array.isArray(resposta.body)).toBe(true);
+        expect(resposta.body[0]).toHaveProperty('titulo');
+    });
 
-  it('deve buscar livro por ID', async () => {
-    const created = await request(app)
-      .post('/books')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ titulo: 'Busca ID', autor: 'B', paginasTotal: 150 });
+    test('GET /books deve retornar 404 quando filtros não encontrarem registros', async () => {
+        const { Authorization } = await authHeader();
+        await request(app)
+            .post('/books')
+            .set('Authorization', Authorization)
+            .send({ titulo: 'Livro X', categoria: 'ficcao', anoPublicacao: 2018 })
+            .expect(201);
 
-    const res = await request(app)
-      .get(`/books/${created.body._id}`)
-      .set('Authorization', `Bearer ${token}`);
+        const resposta = await request(app)
+            .get('/books')
+            .set('Authorization', Authorization)
+            .query({ categoria: 'historia' })
+            .expect(404);
 
-    expect(res.statusCode).toEqual(200);
-    expect(res.body._id).toBe(created.body._id);
-  });
+        expect(resposta.body).toHaveProperty('message', 'Nenhum livro encontrado para os filtros informados');
+    });
 
-  it('deve atualizar um livro', async () => {
-    const created = await request(app)
-      .post('/books')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ titulo: 'Original', autor: 'C', paginasTotal: 200 });
+    test('GET /books/:id deve retornar livro específico', async () => {
+        const { Authorization } = await authHeader();
+        const created = await request(app)
+            .post('/books')
+            .set('Authorization', Authorization)
+            .send({ titulo: 'Livro Detalhe', anoPublicacao: 2012 })
+            .expect(201);
 
-    const res = await request(app)
-      .put(`/books/${created.body._id}`)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ titulo: 'Atualizado' });
+        const resposta = await request(app)
+            .get(`/books/${created.body.id}`)
+            .set('Authorization', Authorization)
+            .expect(200);
+        expect(resposta.body).toHaveProperty('id', created.body.id);
+    });
 
-    expect(res.statusCode).toEqual(200);
-    expect(res.body.titulo).toBe('Atualizado');
-  });
+    test('PUT /books/:id deve atualizar livro', async () => {
+        const { Authorization } = await authHeader();
+        const created = await request(app)
+            .post('/books')
+            .set('Authorization', Authorization)
+            .send({ titulo: 'Livro Atualizar', anoPublicacao: 2015 })
+            .expect(201);
 
-  it('deve remover um livro', async () => {
-    const created = await request(app)
-      .post('/books')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ titulo: 'Para Deletar', autor: 'D', paginasTotal: 100 });
+        const resposta = await request(app)
+            .put(`/books/${created.body.id}`)
+            .set('Authorization', Authorization)
+            .send({ titulo: 'Livro Atualizado', anoPublicacao: 2016 })
+            .expect(200);
 
-    const res = await request(app)
-      .delete(`/books/${created.body._id}`)
-      .set('Authorization', `Bearer ${token}`);
+        expect(resposta.body).toHaveProperty('titulo', 'Livro Atualizado');
+    });
 
-    expect(res.statusCode).toEqual(204);
-  });
+    test('DELETE /books/:id deve remover livro', async () => {
+        const { Authorization } = await authHeader();
+        const created = await request(app)
+            .post('/books')
+            .set('Authorization', Authorization)
+            .send({ titulo: 'Livro Remover', anoPublicacao: 2011 })
+            .expect(201);
+
+        await request(app)
+            .delete(`/books/${created.body.id}`)
+            .set('Authorization', Authorization)
+            .expect(204);
+
+        await request(app)
+            .get(`/books/${created.body.id}`)
+            .set('Authorization', Authorization)
+            .expect(404);
+    });
+
+    test('Não deve permitir anoPublicacao no futuro', async () => {
+        const { Authorization } = await authHeader();
+        const nextYear = new Date().getFullYear() + 1;
+        const resposta = await request(app)
+            .post('/books')
+            .set('Authorization', Authorization)
+            .send({ titulo: 'Livro Futuro', anoPublicacao: nextYear })
+            .expect(422);
+
+        expect(resposta.body).toHaveProperty('message');
+    });
+
+    test('GET /books sem token deve retornar 401', async () => {
+        await request(app)
+            .post('/books')
+            .set('Authorization', (await authHeader()).Authorization)
+            .send({ titulo: 'Livro Público', anoPublicacao: 2010 })
+            .expect(201);
+
+        const resposta = await request(app).get('/books').expect(401);
+        expect(resposta.body).toHaveProperty('message', 'Token não fornecido');
+    });
 });

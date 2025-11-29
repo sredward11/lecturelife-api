@@ -1,33 +1,26 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const { connectDatabase, disconnectDatabase } = require('../config/database');
 
 let mongoServer;
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  const uri = mongoServer.getUri();
-  
-  // Desconecta se já estiver conectado (por segurança)
-  if (mongoose.connection.readyState !== 0) {
-    await mongoose.disconnect();
-  }
-  
-  await mongoose.connect(uri);
-  
-  // Define segredo JWT para testes se não estiver definido
-  if (!process.env.JWT_SECRET) {
-    process.env.JWT_SECRET = 'test_secret';
-  }
-});
-
-afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'segredo-de-teste';
+    mongoServer = await MongoMemoryServer.create();
+    const uri = mongoServer.getUri();
+    await connectDatabase(uri);
 });
 
 afterEach(async () => {
-  const collections = mongoose.connection.collections;
-  for (const key in collections) {
-    await collections[key].deleteMany();
-  }
+    const collections = mongoose.connection.collections;
+    for (const key of Object.keys(collections)) {
+        await collections[key].deleteMany();
+    }
+});
+
+afterAll(async () => {
+    await disconnectDatabase();
+    if (mongoServer) {
+        await mongoServer.stop();
+    }
 });

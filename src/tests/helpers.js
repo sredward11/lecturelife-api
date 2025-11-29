@@ -1,48 +1,48 @@
 const request = require('supertest');
 const app = require('../app');
-const Book = require('../models/Book');
 
-async function createAndLoginUser(email = 'teste@example.com', role = 'user') {
-  const userData = {
-    nome: 'Usuário Teste',
-    email,
-    senha: 'password123',
-    role,
-  };
+async function createAndLoginUser(overrides = {}) {
+    const userPayload = {
+        nome: 'Usuário Teste',
+        email: `usuario-${Date.now()}@example.com`,
+        senha: 'senha123',
+        ...overrides,
+    };
 
-  await request(app).post('/auth/register').send(userData);
-  
-  const res = await request(app).post('/auth/login').send({
-    email: userData.email,
-    senha: userData.senha,
-  });
+    await request(app).post('/auth/register').send(userPayload);
+    const loginResponse = await request(app)
+        .post('/auth/login')
+        .send({ email: userPayload.email, senha: userPayload.senha })
+        .expect(200);
 
-  return {
-    token: res.body.token,
-    userId: res.body.user.id,
-    userData,
-  };
+    return {
+        token: loginResponse.body.token,
+        user: loginResponse.body.user,
+    };
 }
 
-async function createBook(token) {
-  const bookData = {
-    titulo: 'Livro de Teste',
-    autor: 'Autor Teste',
-    anoPublicacao: 2023,
-    categoria: 'Ficção',
-    paginasTotal: 200,
-    sinopse: 'Sinopse teste',
-  };
+async function createBook(token, overrides = {}) {
+    const bookPayload = {
+        titulo: `Livro ${Date.now()}`,
+        autor: 'Autor Teste',
+        anoPublicacao: 2020,
+        categoria: 'técnico',
+        paginasTotal: 300,
+        sinopse: 'Livro de teste',
+        ...overrides,
+    };
 
-  const res = await request(app)
-    .post('/books')
-    .set('Authorization', `Bearer ${token}`)
-    .send(bookData);
+    const resposta = await request(app)
+        .post('/books')
+        .set('Authorization', `Bearer ${token}`)
+        .send(bookPayload)
+        .expect(201);
 
-  return res.body;
+    return resposta.body;
 }
 
 module.exports = {
-  createAndLoginUser,
-  createBook,
+    app,
+    createAndLoginUser,
+    createBook,
 };
