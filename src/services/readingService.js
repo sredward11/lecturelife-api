@@ -1,28 +1,68 @@
-const Reading = require('../models/reading');
 const mongoose = require('mongoose');
+const Book = require('../models/Book');
+const Reading = require('../models/reading');
+
+const ACTIVE_STATUSES = ['planejando', 'lendo'];
+const ALLOWED_STATUSES = ['planejando', 'lendo', 'concluido', 'abandonado'];
+
+function formatBook(book) {
+  if (!book) return undefined;
+  const { __v, ...data } = book.toObject({ versionKey: false });
+  data.id = data._id;
+  delete data._id;
+  return data;
+}
+
+function formatReading(reading) {
+  const { __v, ...data } = reading.toObject({ versionKey: false });
+  data.id = data._id;
+  data.readingId = data._id;
+  delete data._id;
+  if (data.bookId && typeof data.bookId === 'object') {
+    data.book = formatBook(reading.bookId);
+    data.bookId = reading.bookId.id || reading.bookId;
+  }
+  if (data.userId && typeof data.userId === 'object') {
+    data.userId = reading.userId.id || reading.userId;
+  }
+  return data;
+}
 
 async function createReading(userId, payload) {
   const { bookId, nota, paginasLidas, dataInicio, dataFim } = payload;
   const status = payload.status || 'planejando';
 
+  // 1. Validação do Livro
   if (!bookId) {
     const error = new Error('bookId é obrigatório');
     error.statusCode = 422;
     throw error;
   }
+  if (!mongoose.Types.ObjectId.isValid(bookId)) {
+    const error = new Error('bookId inválido');
+    error.statusCode = 422;
+    throw error;
+  }
+  const book = await Book.findById(bookId);
+  if (!book) {
+    const error = new Error('Livro informado na leitura não foi encontrado');
+    error.statusCode = 422;
+    throw error;
+  }
 
-  const validStatuses = ['planejando', 'lendo', 'concluido', 'abandonado'];
-  if (!validStatuses.includes(status)) {
+  // 2. Validação do Status
+  if (!ALLOWED_STATUSES.includes(status)) {
     const error = new Error('Status de leitura inválido');
     error.statusCode = 422;
     throw error;
   }
 
-  if (['planejando', 'lendo'].includes(status)) {
+  // 3. Verificar Duplicidade de Leitura Ativa
+  if (ACTIVE_STATUSES.includes(status)) {
     const existing = await Reading.findOne({
       userId,
       bookId,
-      status: { $in: ['planejando', 'lendo'] },
+      status: { $in: ACTIVE_STATUSES },
     });
     if (existing) {
       const error = new Error('Já existe uma leitura ativa para este livro');
@@ -31,85 +71,221 @@ async function createReading(userId, payload) {
     }
   }
 
-  if (nota !== undefined && status !== 'concluido') {
+  // 4. Validação da Nota
+  if (nota !== undefined && nota !== null && status !== 'concluido') {
     const error = new Error('Nota só pode ser informada quando a leitura estiver concluída');
     error.statusCode = 422;
     throw error;
   }
 
-  if (status === 'concluido' && !dataInicio) {
-    const error = new Error('dataInicio é obrigatória para leituras concluídas');
-    error.statusCode = 422;
-    throw error;
+  // 5. Validação de Páginas
+  if (paginasLidas !== undefined && paginasLidas !== null) {
+    if (book.paginasTotal && paginasLidas > book.paginasTotal) {
+      const error = new Error('Páginas lidas não podem exceder o total do livro');
+      error.statusCode = 422;
+      throw error;
+    }
+    if (status === 'concluido' && book.paginasTotal) {
+      const tolerancia = Math.ceil(book.paginasTotal * 0.1);
+      const minimoAceito = book.paginasTotal - tolerancia;
+      if (paginasLidas < minimoAceito) {
+        const error = new Error('Páginas lidas incompatíveis com uma leitura concluída');
+        error.statusCode = 422;
+        throw error;
+      }
+    }
+  }
+
+  // 6. Validação de Datas
+  let datesAdjust = {};
+  if (status === 'lendo' && !dataInicio) {
+    datesAdjust.dataInicio = new Date();
+  }
+  if (status === 'concluido') {
+    if (!dataFim) {
+      const error = new Error('dataFim é obrigatória para leituras concluídas');
+      error.statusCode = 422;
+      throw error;
+    }
+    if (!dataInicio) {
+      const error = new Error('dataInicio é obrigatória para leituras concluídas');
+      error.statusCode = 422;
+      throw error;
+    }
+    if (new Date(dataFim) < new Date(dataInicio)) {
+      const error = new Error('dataFim deve ser maior ou igual a dataInicio');
+      error.statusCode = 422;
+      throw error;
+    }
   }
 
   const reading = await Reading.create({
     ...payload,
+    ...datesAdjust,
     status,
     userId,
   });
 
-  return reading;
+  await reading.populate('bookId');
+  return formatReading(reading);
 }
 
-async function listReadings(userId, filters = {}) {
+async function listReadings(userId, filtros = {}) {
   const query = { userId };
-
-  if (filters.status) {
-    query.status = filters.status;
-  }
-
-  const readings = await Reading.find(query).populate('bookId').sort({ updatedAt: -1 });
   
-  if (Object.keys(filters).length > 0 && (!readings || readings.length === 0)) {
-      const error = new Error('Nenhuma leitura encontrada para os filtros informados');
-      error.statusCode = 404;
-      throw error;
-  }
-  
-  return readings;
-}
-
-async function getReadingById(userId, readingId) {
-  const reading = await Reading.findOne({ _id: readingId, userId }).populate('bookId');
-  if (!reading) {
-    const error = new Error('Leitura não encontrada');
-    error.statusCode = 404;
-    throw error;
-  }
-  return reading;
-}
-
-async function updateReading(userId, readingId, payload) {
-  const reading = await Reading.findOne({ _id: readingId, userId });
-  if (!reading) {
-    const error = new Error('Leitura não encontrada');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  if (payload.status && !['planejando', 'lendo', 'concluido', 'abandonado'].includes(payload.status)) {
+  if (filtros.status) {
+    if (!ALLOWED_STATUSES.includes(filtros.status)) {
       const error = new Error('Status de leitura inválido');
       error.statusCode = 422;
       throw error;
-  }
-  
-  const allowed = ['status', 'nota', 'paginasLidas', 'dataInicio', 'dataFim', 'favorito'];
-  const keys = Object.keys(payload);
-  const invalid = keys.find(k => !allowed.includes(k));
-  if (invalid) {
-       const error = new Error('Campos não permitidos no corpo da requisição');
-       error.statusCode = 422;
-       throw error;
+    }
+    query.status = filtros.status;
   }
 
-  Object.assign(reading, payload);
-  await reading.save();
-  return reading;
+  const readings = await Reading.find(query)
+    .populate('bookId')
+    .sort({ createdAt: -1 });
+
+  const filtered = filtros.categoria
+    ? readings.filter((item) => item.bookId && item.bookId.categoria === filtros.categoria)
+    : readings;
+
+  if ((filtros.status || filtros.categoria) && filtered.length === 0) {
+    const error = new Error('Nenhuma leitura encontrada para os filtros informados');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return filtered.map(formatReading);
 }
 
-async function deleteReading(userId, readingId) {
-  const reading = await Reading.findOneAndDelete({ _id: readingId, userId });
+async function getReadingById(userId, id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const error = new Error('Leitura não encontrada');
+    error.statusCode = 404;
+    throw error;
+  }
+  const reading = await Reading.findOne({ _id: id, userId }).populate('bookId');
+  if (!reading) {
+    const error = new Error('Leitura não encontrada');
+    error.statusCode = 404;
+    throw error;
+  }
+  return formatReading(reading);
+}
+
+async function updateReading(userId, id, payload) {
+  const reading = await Reading.findOne({ _id: id, userId });
+  if (!reading) {
+    const error = new Error('Leitura não encontrada');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const allowedFields = ['bookId', 'status', 'dataInicio', 'dataFim', 'nota', 'paginasLidas', 'favorito'];
+  const extraFields = Object.keys(payload || {}).filter((field) => !allowedFields.includes(field));
+
+  if (extraFields.length) {
+    const error = new Error('Campos não permitidos no corpo da requisição');
+    error.statusCode = 422;
+    throw error;
+  }
+
+  const updateData = { ...payload };
+  const status = updateData.status !== undefined ? updateData.status : reading.status;
+
+  // Validação de Status
+  if (!ALLOWED_STATUSES.includes(status)) {
+    const error = new Error('Status de leitura inválido');
+    error.statusCode = 422;
+    throw error;
+  }
+
+  // Validação de Duplicidade (se status ou livro mudou)
+  const targetBookId = updateData.bookId || reading.bookId;
+  if (ACTIVE_STATUSES.includes(status)) {
+    const existing = await Reading.findOne({
+      userId,
+      bookId: targetBookId,
+      status: { $in: ACTIVE_STATUSES },
+      _id: { $ne: reading._id }
+    });
+    if (existing) {
+      const error = new Error('Já existe uma leitura ativa para este livro');
+      error.statusCode = 409;
+      throw error;
+    }
+  }
+
+  // Validação de Datas
+  const dataInicio = updateData.dataInicio !== undefined ? updateData.dataInicio : reading.dataInicio;
+  const dataFim = updateData.dataFim !== undefined ? updateData.dataFim : reading.dataFim;
+  let datesAdjust = {};
+
+  if (status === 'lendo' && !dataInicio) {
+    datesAdjust.dataInicio = new Date();
+  }
+  if (status === 'concluido') {
+    if (!dataFim) {
+      const error = new Error('dataFim é obrigatória para leituras concluídas');
+      error.statusCode = 422;
+      throw error;
+    }
+    if (!dataInicio) {
+      const error = new Error('dataInicio é obrigatória para leituras concluídas');
+      error.statusCode = 422;
+      throw error;
+    }
+    if (new Date(dataFim) < new Date(dataInicio)) {
+      const error = new Error('dataFim deve ser maior ou igual a dataInicio');
+      error.statusCode = 422;
+      throw error;
+    }
+  }
+
+  // Validação de Nota
+  const nota = updateData.nota !== undefined ? updateData.nota : reading.nota;
+  if (nota !== undefined && nota !== null && status !== 'concluido') {
+    const error = new Error('Nota só pode ser informada quando a leitura estiver concluída');
+    error.statusCode = 422;
+    throw error;
+  }
+
+  // Validação de Páginas
+  const paginasLidas = updateData.paginasLidas !== undefined ? updateData.paginasLidas : reading.paginasLidas;
+  if (paginasLidas !== undefined && paginasLidas !== null) {
+    const book = await Book.findById(targetBookId); // Precisa buscar o livro para saber o total de páginas
+    if (book) {
+      if (book.paginasTotal && paginasLidas > book.paginasTotal) {
+        const error = new Error('Páginas lidas não podem exceder o total do livro');
+        error.statusCode = 422;
+        throw error;
+      }
+      if (status === 'concluido' && book.paginasTotal) {
+        const tolerancia = Math.ceil(book.paginasTotal * 0.1);
+        const minimoAceito = book.paginasTotal - tolerancia;
+        if (paginasLidas < minimoAceito) {
+          const error = new Error('Páginas lidas incompatíveis com uma leitura concluída');
+          error.statusCode = 422;
+          throw error;
+        }
+      }
+    }
+  }
+
+  Object.assign(reading, {
+    ...updateData,
+    status,
+    ...datesAdjust,
+  });
+
+  await reading.save();
+  await reading.populate('bookId');
+  return formatReading(reading);
+}
+
+async function deleteReading(userId, id) {
+  const reading = await Reading.findOneAndDelete({ _id: id, userId });
   if (!reading) {
     const error = new Error('Leitura não encontrada');
     error.statusCode = 404;
@@ -122,18 +298,37 @@ async function getStats(userId) {
     { $match: { userId: new mongoose.Types.ObjectId(userId) } },
     {
       $group: {
-        _id: null,
-        totalLeituras: { $sum: 1 },
-        concluidos: {
-          $sum: { $cond: [{ $eq: ['$status', 'concluido'] }, 1, 0] },
-        },
-        totalPaginasLidos: { $sum: '$paginasLidas' },
-        mediaNotas: { $avg: '$nota' },
+        _id: '$status',
+        total: { $sum: 1 },
+        notas: { $push: '$nota' },
       },
     },
   ]);
 
-  return stats[0] || { totalLeituras: 0, concluidos: 0, totalPaginasLidos: 0, mediaNotas: 0 };
+  let totalLeituras = 0;
+  let totalPaginas = 0; 
+  let concluidos = 0;
+  let notas = [];
+
+  stats.forEach((registro) => {
+    totalLeituras += registro.total;
+    totalPaginas += registro.paginas; 
+    if (registro._id === 'concluido') {
+      concluidos = registro.total;
+      notas = registro.notas.filter((nota) => nota !== undefined && nota !== null);
+    }
+  });
+
+  const mediaNotas = notas.length
+    ? notas.reduce((soma, nota) => soma + nota, 0) / notas.length
+    : 0;
+
+  return {
+    totalLeituras,
+    concluidos,
+    totalPaginasLidos: totalPaginas, 
+    mediaNotas: Number(mediaNotas.toFixed(2)),
+  };
 }
 
 module.exports = {
