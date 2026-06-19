@@ -1,9 +1,12 @@
 require('dotenv').config();
+
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const { connectDatabase } = require('./config/database');
-const routes = require('./routes'); // Vai puxar o index.js
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./docs/swagger.json');
+const routes = require('./routes');
 
 const app = express();
 
@@ -16,6 +19,9 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
+
+// Documentação Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.use('/', routes);
 

@@ -301,6 +301,7 @@ async function getStats(userId) {
         _id: '$status',
         total: { $sum: 1 },
         notas: { $push: '$nota' },
+        paginas: { $sum: '$paginasLidas' },
       },
     },
   ]);

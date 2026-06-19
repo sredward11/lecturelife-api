@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 
+const path = require('path');
+
+const dotenvResult = require('dotenv').config({
+  path: path.resolve(process.cwd(), '.env'),
+});
+
+console.log('dotenv carregado no www?', !dotenvResult.error);
+console.log('MONGODB_URI no www?', !!process.env.MONGODB_URI);
+
 const app = require('../app');
 const http = require('http');
 
